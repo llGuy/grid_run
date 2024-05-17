@@ -35,7 +35,9 @@ MJX_BASE_PATH = "madrona_mjx"
 
 DO_TRACE_SPLIT = False
 
-BIG_SCENE_NUM_RUNS = 4
+BIG_SCENE_NUM_RUNS = 2
+
+CHECK_ALREADY_RUN = 1
 
 # Environment variables that all runs will set (although not all need)
 @dataclass
@@ -62,7 +64,7 @@ class EnvironmentGen:
         command = f"MADRONA_TRACK_TRACE_SPLIT={self.env_vars.track_trace_split} "
         command = command + f"HSSD_FIRST_SCENE={self.env_vars.first_scene_index} "
         command = command + f"HSSD_NUM_SCENES={self.env_vars.num_scenes} "
-        command = command + f"MADRONA_LBVH={0} "
+        command = command + f"MADRONA_LBVH={1} "
         command = command + f"MADRONA_WIDEN={1} "
         command = command + f"MADRONA_MWGPU_FORCE_DEBUG={0} "
         command = command + f"MADRONA_TIMING_FILE={self.env_vars.timing_file} "
@@ -456,6 +458,22 @@ def calc_procthor_avg(rmode, res, num_worlds, num_scenes):
         with open(split_avg_file_name, "w") as file:
             json.dump(data_split, file, indent=4) 
 
+def test():
+    render_modes_list = [ 
+        RenderMode(render_no=RAST_NO, name="test", is_rgb=1)
+    ]
+
+    render_resolutions_list = [ 64 ]
+    num_worlds_list = [ 2048*2 ]
+    num_unique_scenes_list = [ 16 ]
+
+    for render_mode in render_modes_list:
+        for render_resolution in render_resolutions_list:
+            for num_worlds in num_worlds_list:
+                do_mjx_run(render_mode, render_resolution, 
+                        num_worlds);
+
+
 # Perform the runs
 def main():
     # cache_hssd_bvh()
@@ -469,25 +487,15 @@ def main():
         RenderMode(render_no=RAST_NO, name="RastDepth", is_rgb=0)
     ]
 
-    render_resolutions_list = [ 32, 64, 128, 256 ]
-    num_worlds_list = [ 1024, 2048 ]
-    num_unique_scenes_list = [ 1, 16 ]
+    render_resolutions_list = [ 64, 128, 256 ]
+    num_worlds_list = [ 1024 ]
+    num_unique_scenes_list = [ 16 ]
 
-    """
     for render_mode in render_modes_list:
         for render_resolution in render_resolutions_list:
             for num_worlds in num_worlds_list:
                 do_hideseek_run(render_mode, render_resolution, 
                         num_worlds);
-
-    for render_mode in render_modes_list:
-        for render_resolution in render_resolutions_list:
-            for num_worlds in num_worlds_list:
-                for num_unique_scenes in num_unique_scenes_list:
-                    do_hssd_run(render_mode, render_resolution, 
-                            num_worlds, num_unique_scenes);
-                    calc_hssd_avg(render_mode, render_resolution, 
-                            num_worlds, num_unique_scenes);
 
     for render_mode in render_modes_list:
         for render_resolution in render_resolutions_list:
@@ -501,24 +509,13 @@ def main():
                 for num_unique_scenes in num_unique_scenes_list:
                     do_procthor_run(render_mode, render_resolution, 
                             num_worlds, num_unique_scenes);
-                    calc_procthor_avg(render_mode, render_resolution, 
-                            num_worlds, num_unique_scenes);
-    for render_mode in render_modes_list:
-        for render_resolution in render_resolutions_list:
-            for num_worlds in num_worlds_list:
-                for num_unique_scenes in num_unique_scenes_list:
-                    calc_hssd_avg(render_mode, render_resolution, 
-                            num_worlds, num_unique_scenes);
-    """
-    for render_mode in render_modes_list:
-        for render_resolution in render_resolutions_list:
-            for num_worlds in num_worlds_list:
-                for num_unique_scenes in num_unique_scenes_list:
-                    calc_hssd_avg(render_mode, render_resolution, 
-                            num_worlds, num_unique_scenes)
-                    calc_procthor_avg(render_mode, render_resolution, 
-                            num_worlds, num_unique_scenes);
 
+    for render_mode in render_modes_list:
+        for render_resolution in render_resolutions_list:
+            for num_worlds in num_worlds_list:
+                for num_unique_scenes in num_unique_scenes_list:
+                    do_hssd_run(render_mode, render_resolution, 
+                            num_worlds, num_unique_scenes);
 
 if __name__ == "__main__":
     main()
