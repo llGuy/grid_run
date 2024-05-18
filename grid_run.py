@@ -35,7 +35,7 @@ MJX_BASE_PATH = "madrona_mjx"
 
 DO_TRACE_SPLIT = False
 
-BIG_SCENE_NUM_RUNS = 2
+BIG_SCENE_NUM_RUNS = 4
 
 CHECK_ALREADY_RUN = 1
 
@@ -55,6 +55,7 @@ class EnvironmentVars:
     seed: int
     texture_cache: str
     render_rgb: int
+    hideseek_num_agents: int
 
 class EnvironmentGen:
     def __init__(self, vars: EnvironmentVars):
@@ -77,6 +78,7 @@ class EnvironmentGen:
         command = command + f"MADRONA_SEED={self.env_vars.seed} "
         command = command + f"MADRONA_TEXTURE_CACHE_DIR={self.env_vars.texture_cache} "
         command = command + f"MADRONA_RENDER_RGB={self.env_vars.render_rgb} "
+        command = command + f"HIDESEEK_NUM_AGENTS={self.env_vars.hideseek_num_agents} "
 
         return command
 
@@ -149,9 +151,9 @@ class HideseekRun:
         print(command)
         os.system(command)
 
-def do_procthor_run(rmode, res, num_worlds, num_scenes, cache_all=0):
+def do_procthor_run(rmode, res, num_worlds, num_scenes, num_agents, cache_all=0):
     for i in range(BIG_SCENE_NUM_RUNS):
-        output_file_name = f"procthor/run{i}/out_{rmode.name}_{num_worlds}_{res}x{res}_{num_scenes}.json"
+        output_file_name = f"procthor/run{i}/out_{rmode.name}_{num_worlds}_{res}x{res}_{num_scenes}_{num_agents}.json"
 
         env_vars = EnvironmentVars(
             track_trace_split=0,
@@ -166,7 +168,8 @@ def do_procthor_run(rmode, res, num_worlds, num_scenes, cache_all=0):
             proc_thor=1,
             seed=i,
             texture_cache="procthor_texture_cache",
-            render_rgb=rmode.is_rgb
+            render_rgb=rmode.is_rgb,
+            hideseek_num_agents=num_agents
         )
 
         run_cfg = RunConfig(
@@ -175,7 +178,7 @@ def do_procthor_run(rmode, res, num_worlds, num_scenes, cache_all=0):
             base_path=PROCTHOR_BASE_PATH
         )
 
-        if not os.path.isfile(output_file_name):
+        if not os.path.isfile(output_file_name) or not CHECK_ALREADY_RUN:
             print("Haven't performed the run - doing now!")
             hssd_run = HSSDRun(run_cfg, env_vars)
             hssd_run.run()
@@ -197,9 +200,9 @@ def do_procthor_run(rmode, res, num_worlds, num_scenes, cache_all=0):
             else:
                 print("Already performed run")
 
-def do_hssd_run(rmode, res, num_worlds, num_scenes, cache_all=0):
+def do_hssd_run(rmode, res, num_worlds, num_scenes, num_agents, cache_all=0):
     for i in range(BIG_SCENE_NUM_RUNS):
-        output_file_name = f"hssd/run{i}/out_{rmode.name}_{num_worlds}_{res}x{res}_{num_scenes}.json"
+        output_file_name = f"hssd/run{i}/out_{rmode.name}_{num_worlds}_{res}x{res}_{num_scenes}_{num_agents}.json"
 
         env_vars = EnvironmentVars(
             track_trace_split=0,
@@ -214,7 +217,8 @@ def do_hssd_run(rmode, res, num_worlds, num_scenes, cache_all=0):
             proc_thor=0,
             seed=i,
             texture_cache="hssd_texture_cache",
-            render_rgb=rmode.is_rgb
+            render_rgb=rmode.is_rgb,
+            hideseek_num_agents=num_agents
         )
 
         run_cfg = RunConfig(
@@ -223,7 +227,7 @@ def do_hssd_run(rmode, res, num_worlds, num_scenes, cache_all=0):
             base_path=HSSD_BASE_PATH
         )
 
-        if not os.path.isfile(output_file_name):
+        if not os.path.isfile(output_file_name) or not CHECK_ALREADY_RUN:
             print("Haven't performed the run - doing now!")
             hssd_run = HSSDRun(run_cfg, env_vars)
             hssd_run.run()
@@ -245,8 +249,8 @@ def do_hssd_run(rmode, res, num_worlds, num_scenes, cache_all=0):
             else:
                 print("Already performed run")
 
-def do_hideseek_run(rmode, res, num_worlds):
-    output_file_name = f"hideseek/out_{rmode.name}_{num_worlds}_{res}x{res}_1.json"
+def do_hideseek_run(rmode, res, num_worlds, num_agents):
+    output_file_name = f"hideseek/out_{rmode.name}_{num_worlds}_{res}x{res}_{num_agents}.json"
 
     env_vars = EnvironmentVars(
         track_trace_split=0,
@@ -261,7 +265,8 @@ def do_hideseek_run(rmode, res, num_worlds):
         proc_thor=0,
         seed=0,
         texture_cache="hideseek_texture_cache",
-        render_rgb=rmode.is_rgb
+        render_rgb=rmode.is_rgb,
+        hideseek_num_agents=num_agents
     )
 
     run_cfg = RunConfig(
@@ -275,7 +280,7 @@ def do_hideseek_run(rmode, res, num_worlds):
 
     if rmode.render_no == RT_NO and DO_TRACE_SPLIT:
         # Start a split run too
-        split_output_file_name = f"hideseek/out_{rmode.name}_{num_worlds}_{res}x{res}_1_split.json"
+        split_output_file_name = f"hideseek/out_{rmode.name}_{num_worlds}_{res}x{res}_{num_agents}_split.json"
 
         env_vars.track_trace_split = 1
         env_vars.timing_file = split_output_file_name
@@ -301,7 +306,8 @@ def do_mjx_run(rmode, res, num_worlds):
         seed=0,
         # No materials here
         texture_cache="mjx_texture_cache",
-        render_rgb=0
+        render_rgb=0,
+        hideseek_num_agents=1
     )
 
     run_cfg = RunConfig(
@@ -324,14 +330,14 @@ def do_mjx_run(rmode, res, num_worlds):
         split_mjx_run = MJXRun(run_cfg, env_vars)
         split_mjx_run.run()
 
-def calc_hssd_avg(rmode, res, num_worlds, num_scenes):
+def calc_hssd_avg(rmode, res, num_worlds, num_scenes, num_agents):
     data = None
     data_split = None
 
     num_samples = 0
 
     for i in range(BIG_SCENE_NUM_RUNS):
-        output_file_name = f"hssd/run{i}/out_{rmode.name}_{num_worlds}_{res}x{res}_{num_scenes}.json"
+        output_file_name = f"hssd/run{i}/out_{rmode.name}_{num_worlds}_{res}x{res}_{num_scenes}_{num_agents}.json"
 
         if not os.path.isfile(output_file_name):
             print("File doesn't exit!")
@@ -383,7 +389,7 @@ def calc_hssd_avg(rmode, res, num_worlds, num_scenes):
     avg_total_time = data["avg_total_time"]
     print(f"Average total time: {avg_total_time}")
 
-    avg_file_name = f"hssd/avg/out_{rmode.name}_{num_worlds}_{res}x{res}_{num_scenes}.json"
+    avg_file_name = f"hssd/avg/out_{rmode.name}_{num_worlds}_{res}x{res}_{num_scenes}_{num_agents}.json"
     split_avg_file_name = f"hssd/avg/out_{rmode.name}_{num_worlds}_{res}x{res}_{num_scenes}_split.json"
 
     with open(avg_file_name, "w") as file:
@@ -393,14 +399,14 @@ def calc_hssd_avg(rmode, res, num_worlds, num_scenes):
         with open(split_avg_file_name, "w") as file:
             json.dump(data_split, file, indent=4) 
 
-def calc_procthor_avg(rmode, res, num_worlds, num_scenes):
+def calc_procthor_avg(rmode, res, num_worlds, num_scenes, num_agents):
     data = None
     data_split = None
 
     num_samples = 0
 
     for i in range(BIG_SCENE_NUM_RUNS):
-        output_file_name = f"procthor/run{i}/out_{rmode.name}_{num_worlds}_{res}x{res}_{num_scenes}.json"
+        output_file_name = f"procthor/run{i}/out_{rmode.name}_{num_worlds}_{res}x{res}_{num_scenes}_{num_agents}.json"
 
         if data is None:
             with open(output_file_name, "r") as file:
@@ -448,7 +454,7 @@ def calc_procthor_avg(rmode, res, num_worlds, num_scenes):
     avg_total_time = data["avg_total_time"]
     print(f"Average total time: {avg_total_time}")
 
-    avg_file_name = f"procthor/avg/out_{rmode.name}_{num_worlds}_{res}x{res}_{num_scenes}.json"
+    avg_file_name = f"procthor/avg/out_{rmode.name}_{num_worlds}_{res}x{res}_{num_scenes}_{num_agents}.json"
     split_avg_file_name = f"procthor/avg/out_{rmode.name}_{num_worlds}_{res}x{res}_{num_scenes}_split.json"
 
     with open(avg_file_name, "w") as file:
@@ -460,18 +466,37 @@ def calc_procthor_avg(rmode, res, num_worlds, num_scenes):
 
 def test():
     render_modes_list = [ 
-        RenderMode(render_no=RAST_NO, name="test", is_rgb=1)
+        RenderMode(render_no=RT_NO, name="test", is_rgb=1)
     ]
 
     render_resolutions_list = [ 64 ]
-    num_worlds_list = [ 2048*2 ]
+    num_worlds_list = [ 64 ]
     num_unique_scenes_list = [ 16 ]
 
     for render_mode in render_modes_list:
         for render_resolution in render_resolutions_list:
             for num_worlds in num_worlds_list:
-                do_mjx_run(render_mode, render_resolution, 
-                        num_worlds);
+                do_hssd_run(render_mode, render_resolution, 
+                        num_worlds, 16, 8);
+
+
+def do_multi_view_scaling():
+    render_modes_list = [ 
+        RenderMode(render_no=RT_NO, name="RTColor", is_rgb=1),
+        RenderMode(render_no=RAST_NO, name="RastColor", is_rgb=1),
+    ]
+
+    render_resolutions_list = [ 64 ]
+    num_worlds_list = [ 2048 ]
+
+    num_agents_list = [1,2, 4, 8, 16,32]
+
+    for render_mode in render_modes_list:
+        for render_resolution in render_resolutions_list:
+            for num_worlds in num_worlds_list:
+                for num_agents in num_agents_list:
+                    do_hideseek_run(render_mode, render_resolution, 
+                            num_worlds, num_agents);
 
 
 # Perform the runs
@@ -481,41 +506,64 @@ def main():
 
     # Let's first cache all the BVHs for HSSD
     render_modes_list = [ 
-        RenderMode(render_no=RT_NO, name="RTColor", is_rgb=1),
-        RenderMode(render_no=RT_NO, name="RTDepth", is_rgb=0),
         RenderMode(render_no=RAST_NO, name="RastColor", is_rgb=1),
-        RenderMode(render_no=RAST_NO, name="RastDepth", is_rgb=0)
+        RenderMode(render_no=RT_NO, name="RTColor", is_rgb=1),
     ]
 
     render_resolutions_list = [ 64, 128, 256 ]
     num_worlds_list = [ 1024 ]
     num_unique_scenes_list = [ 16 ]
 
+    num_agents_list = [1]
+
+    """
+    for render_mode in render_modes_list:
+        for render_resolution in render_resolutions_list:
+            for num_worlds in num_worlds_list:
+                for num_unique_scenes in num_unique_scenes_list:
+                    for num_agents in num_agents_list:
+                        do_procthor_run(render_mode, render_resolution, 
+                                num_worlds, num_unique_scenes, num_agents);
+    """
+
     for render_mode in render_modes_list:
         for render_resolution in render_resolutions_list:
             for num_worlds in num_worlds_list:
                 do_hideseek_run(render_mode, render_resolution, 
-                        num_worlds);
+                        num_worlds, 5);
 
+    """
     for render_mode in render_modes_list:
         for render_resolution in render_resolutions_list:
             for num_worlds in num_worlds_list:
                 do_mjx_run(render_mode, render_resolution, 
                         num_worlds);
+    """
+
+    """
+    for render_mode in render_modes_list:
+        for render_resolution in render_resolutions_list:
+            for num_worlds in num_worlds_list:
+                for num_unique_scenes in num_unique_scenes_list:
+                    for num_agents in num_agents_list:
+                        do_procthor_run(render_mode, render_resolution, 
+                                num_worlds, num_unique_scenes, num_agents);
+                        calc_procthor_avg(render_mode, render_resolution, 
+                                num_worlds, num_unique_scenes, num_agents);
 
     for render_mode in render_modes_list:
         for render_resolution in render_resolutions_list:
             for num_worlds in num_worlds_list:
                 for num_unique_scenes in num_unique_scenes_list:
-                    do_procthor_run(render_mode, render_resolution, 
-                            num_worlds, num_unique_scenes);
+                    for num_agents in num_agents_list:
+                        do_hssd_run(render_mode, render_resolution, 
+                                num_worlds, num_unique_scenes, num_agents);
+                        calc_hssd_avg(render_mode, render_resolution, 
+                                num_worlds, num_unique_scenes, num_agents);
+    """
 
-    for render_mode in render_modes_list:
-        for render_resolution in render_resolutions_list:
-            for num_worlds in num_worlds_list:
-                for num_unique_scenes in num_unique_scenes_list:
-                    do_hssd_run(render_mode, render_resolution, 
-                            num_worlds, num_unique_scenes);
 
 if __name__ == "__main__":
+    # test()
     main()
+    # do_multi_view_scaling()
